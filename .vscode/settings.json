@@ -1,6 +1,11 @@
 {
-    "workbench.colorTheme": "Atom One Dark",
-    "flake8.args": ["--max-line-length=100"],
+    "workbench.colorTheme": "9a310731-ab2d-40f5-b502-fa5419f799a2",
+    "flake8.args": [
+        "--max-line-length=100"
+    ],
     "editor.formatOnSave": true,
-    "black-formatter.args": ["--line-length","100"],
+    "black-formatter.args": [
+        "--line-length",
+        "100"
+    ],
 }
