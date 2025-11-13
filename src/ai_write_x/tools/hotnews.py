@@ -15,7 +15,7 @@ import random
 from typing import Any, Optional, List, Dict
 from bs4 import BeautifulSoup
 
-from src.ai_write_x.utils import log
+from ai_write_x.utils import log
 
 # 平台名称映射
 PLATFORMS = [

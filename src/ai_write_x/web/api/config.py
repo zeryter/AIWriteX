@@ -6,10 +6,12 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.utils import log
-from src.ai_write_x.utils.path_manager import PathManager
-from src.ai_write_x.adapters.platform_adapters import PlatformType
+from ai_write_x.config.config import Config
+from ai_write_x.config.config import DEFAULT_TEMPLATE_CATEGORIES
+from ai_write_x.utils import log
+from ai_write_x.utils.path_manager import PathManager
+from ai_write_x.adapters.platform_adapters import PlatformType
+from ai_write_x.security.input_validator import InputValidator
 
 
 router = APIRouter(prefix="/api/config", tags=["config"])
@@ -61,6 +63,37 @@ async def update_config_memory(request: ConfigUpdateRequest):
     try:
         config = Config.get_instance()
         config_data = request.config_data.get("config_data", request.config_data)
+
+        # 输入校验：微信凭证（如有传入）
+        if isinstance(config_data, dict) and "wechat" in config_data:
+            wechat_cfg = config_data.get("wechat", {}) or {}
+            credentials = wechat_cfg.get("credentials")
+            if isinstance(credentials, list):
+                validator = InputValidator()
+                for i, cred in enumerate(credentials):
+                    # 字段存在性与类型校验
+                    appid = str(cred.get("appid", "") or "").strip()
+                    appsecret = str(cred.get("appsecret", "") or "").strip()
+                    author = str(cred.get("author", "") or "").strip()
+
+                    if appid:
+                        if not validator.validate_string(appid, min_length=6, max_length=64):
+                            raise HTTPException(status_code=400, detail=f"凭证 {i+1} 的 AppID 格式不正确")
+                    if appsecret:
+                        if not validator.validate_string(appsecret, min_length=6, max_length=128):
+                            raise HTTPException(status_code=400, detail=f"凭证 {i+1} 的 AppSecret 格式不正确")
+                    if author:
+                        if not validator.validate_string(author, min_length=1, max_length=50):
+                            raise HTTPException(status_code=400, detail=f"凭证 {i+1} 的 作者 格式不正确")
+
+                    # 数值字段校验
+                    tag_id = cred.get("tag_id", 0)
+                    try:
+                        tag_id_int = int(tag_id)
+                        if tag_id_int < 0:
+                            raise HTTPException(status_code=400, detail=f"凭证 {i+1} 的 标签ID 必须为非负整数")
+                    except Exception:
+                        raise HTTPException(status_code=400, detail=f"凭证 {i+1} 的 标签ID 必须为整数")
 
         # 深度合并配置到内存
         def deep_merge(target, source):
@@ -142,8 +175,6 @@ async def save_ui_config(config: dict):
 async def get_template_categories():
     """获取所有模板分类"""
     try:
-        from src.ai_write_x.config.config import DEFAULT_TEMPLATE_CATEGORIES
-
         categories = PathManager.get_all_categories(DEFAULT_TEMPLATE_CATEGORIES)
 
         return {"status": "success", "data": categories}

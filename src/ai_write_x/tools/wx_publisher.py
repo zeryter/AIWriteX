@@ -13,10 +13,11 @@ import mimetypes
 import json
 import time
 
-from src.ai_write_x.utils import utils
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.utils import log
-from src.ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils import utils
+from ai_write_x.config.config import Config
+from ai_write_x.utils import log
+from ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils.utils import resolve_image_path
 
 
 class PublishStatus(Enum):
@@ -181,8 +182,6 @@ class WeixinPublisher:
         return img_url
 
     def upload_image(self, image_url):
-        from src.ai_write_x.utils.utils import resolve_image_path  # 导入新函数
-
         if not image_url:
             return "SwCSRjrdGJNaWioRQUHzgF68BHFkSlb_f5xlTquvsOSA6Yy0ZRjFo0aW9eS3JJu_", None, None
 

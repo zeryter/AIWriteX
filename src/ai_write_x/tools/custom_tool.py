@@ -7,11 +7,11 @@ from typing import List, Type
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from src.ai_write_x.utils import utils
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.utils import log
-from src.ai_write_x.tools import search_template
-from src.ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils import utils
+from ai_write_x.config.config import Config
+from ai_write_x.utils import log
+from ai_write_x.tools import search_template
+from ai_write_x.utils.path_manager import PathManager
 
 from aiforge import AIForgeEngine
 

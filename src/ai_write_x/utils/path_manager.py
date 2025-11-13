@@ -2,7 +2,7 @@ import os
 import glob
 import platform
 from pathlib import Path
-from src.ai_write_x.utils import utils
+from ai_write_x.utils import utils
 
 
 class PathManager:

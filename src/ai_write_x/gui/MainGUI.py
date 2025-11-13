@@ -19,18 +19,18 @@ from datetime import datetime
 import PySimpleGUI as sg
 import tkinter as tk
 
-from src.ai_write_x.crew_main import ai_write_x_main
+from ai_write_x.crew_main import ai_write_x_main
 
-from src.ai_write_x.utils import comm
-from src.ai_write_x.utils import utils
-from src.ai_write_x.utils import log
-from src.ai_write_x.config.config import Config
+from ai_write_x.utils import comm
+from ai_write_x.utils import utils
+from ai_write_x.utils import log
+from ai_write_x.config.config import Config
 
-from src.ai_write_x.gui import ConfigEditor
-from src.ai_write_x.gui import ArticleManager
-from src.ai_write_x.gui import TemplateManager
-from src.ai_write_x.config.config import DEFAULT_TEMPLATE_CATEGORIES
-from src.ai_write_x.utils.path_manager import PathManager
+from ai_write_x.gui import ConfigEditor
+from ai_write_x.gui import ArticleManager
+from ai_write_x.gui import TemplateManager
+from ai_write_x.config.config import DEFAULT_TEMPLATE_CATEGORIES
+from ai_write_x.utils.path_manager import PathManager
 
 
 __author__ = "iniwaper@gmail.com"

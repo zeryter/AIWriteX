@@ -8,10 +8,12 @@ import asyncio
 import time
 import queue
 
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.crew_main import ai_write_x_main
-from src.ai_write_x.tools import hotnews
-from src.ai_write_x.utils import utils, log
+from ai_write_x.config.config import Config
+from ai_write_x.crew_main import ai_write_x_main
+from ai_write_x.tools import hotnews
+from ai_write_x.utils import utils, log
+from ai_write_x.utils.path_manager import PathManager
+from datetime import datetime
 
 router = APIRouter(prefix="/api", tags=["generate"])
 
@@ -237,9 +239,6 @@ async def websocket_logs(websocket: WebSocket):
     global _current_log_queue, _current_process
 
     # 初始化文件日志处理器
-    from datetime import datetime
-    from src.ai_write_x.utils.path_manager import PathManager
-
     log_file = PathManager.get_log_dir() / f"WEB_{datetime.now().strftime('%Y-%m-%d')}.log"
     log.LogManager.get_instance().set_file_handler(log_file)
     file_handler = log.LogManager.get_instance().get_file_handler()

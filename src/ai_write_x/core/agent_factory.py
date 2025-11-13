@@ -1,10 +1,10 @@
 from typing import Dict, Type, Optional, Any
 from crewai import Agent, LLM
 
-from src.ai_write_x.core.base_framework import AgentConfig
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.core.tool_registry import GlobalToolRegistry
-from src.ai_write_x.utils import log
+from ai_write_x.core.base_framework import AgentConfig
+from ai_write_x.config.config import Config
+from ai_write_x.core.tool_registry import GlobalToolRegistry
+from ai_write_x.utils import log
 
 
 class AgentFactory:

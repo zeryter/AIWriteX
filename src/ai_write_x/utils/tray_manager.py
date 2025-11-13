@@ -6,7 +6,7 @@ import pystray
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 import threading
-from src.ai_write_x.utils import utils
+from ai_write_x.utils import utils
 
 
 class TrayManager:

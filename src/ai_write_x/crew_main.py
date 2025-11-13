@@ -6,12 +6,12 @@ import signal
 import time
 import json
 
-from src.ai_write_x.utils.path_manager import PathManager
-from src.ai_write_x.tools import hotnews
-from src.ai_write_x.utils import utils
-from src.ai_write_x.utils import log
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.core.system_init import setup_aiwritex
+from ai_write_x.utils.path_manager import PathManager
+from ai_write_x.tools import hotnews
+from ai_write_x.utils import utils
+from ai_write_x.utils import log
+from ai_write_x.config.config import Config
+from ai_write_x.core.system_init import setup_aiwritex
 
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
@@ -230,10 +230,16 @@ def ai_write_x_main(config_data=None):
         except Exception:
             pass
 
-    # 设置环境变量
-    os.environ[config.api_key_name] = config.api_key
-    os.environ["MODEL"] = config.api_model
-    os.environ["OPENAI_API_BASE"] = config.api_apibase
+    # 设置环境变量（非空保护）
+    api_key_value = config.api_key
+    if api_key_value:
+        os.environ[config.api_key_name] = api_key_value
+    model_value = config.api_model
+    if model_value:
+        os.environ["MODEL"] = model_value
+    api_base_value = config.api_apibase
+    if api_base_value:
+        os.environ["OPENAI_API_BASE"] = api_base_value
 
     # 直接启动内容生成，不处理发布
     return ai_write_x_run(config_data=config_data)

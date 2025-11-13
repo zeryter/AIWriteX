@@ -22,3 +22,8 @@ AIWriteX_云盘版_Setup*.zip
 AIWriteX.app
 AIWriteX.dmg
 .qoder
+.venv/
+.vscode/
+.trae/
+tests/
+

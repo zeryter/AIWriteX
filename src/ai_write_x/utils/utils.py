@@ -14,6 +14,7 @@ import tempfile
 import urllib.parse
 from pathlib import Path
 import json
+# 注意：不要在顶层导入 PathManager，以避免与 path_manager.py 的互相依赖造成循环导入。
 
 
 def copy_file(src_file, dest_file):
@@ -478,8 +479,6 @@ def is_local_path(url):
 
 def resolve_image_path(url):
     """将图片URL解析为实际文件系统路径"""
-    from src.ai_write_x.utils.path_manager import PathManager
-
     # 如果是网络URL,直接返回
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme in ("http", "https", "ftp"):
@@ -490,7 +489,13 @@ def resolve_image_path(url):
         # 尝试匹配已知的静态文件路由
         if url.startswith("/images/"):
             filename = url.replace("/images/", "")
-            local_path = PathManager.get_image_dir() / filename
+            # 懒加载以避免循环导入
+            try:
+                from ai_write_x.utils.path_manager import PathManager
+                local_path = PathManager.get_image_dir() / filename
+            except Exception:
+                # 兜底：使用项目目录下的默认 image 目录
+                local_path = Path(__file__).parent.parent / "image" / filename
             return str(local_path)  # 始终返回本地路径
         # 如果不是/images/,才当作Unix绝对路径处理
         elif os.path.isabs(url):

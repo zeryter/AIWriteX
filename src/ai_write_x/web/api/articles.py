@@ -9,10 +9,10 @@ from pydantic import BaseModel
 from typing import List, Optional
 import json
 
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.utils.path_manager import PathManager
-from src.ai_write_x.tools.wx_publisher import pub2wx
-from src.ai_write_x.utils import utils
+from ai_write_x.config.config import Config
+from ai_write_x.utils.path_manager import PathManager
+from ai_write_x.tools.wx_publisher import pub2wx
+from ai_write_x.utils import utils
 
 
 router = APIRouter(prefix="/api/articles", tags=["articles"])

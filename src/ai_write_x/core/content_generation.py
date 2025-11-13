@@ -1,16 +1,16 @@
 import time
 from typing import Dict, Any
 from crewai import Crew, Process, Task, Agent
-from src.ai_write_x.core.base_framework import (
+from ai_write_x.core.base_framework import (
     BaseWorkflowFramework,
     WorkflowConfig,
     ContentResult,
     WorkflowType,
 )
-from src.ai_write_x.core.agent_factory import AgentFactory
-from src.ai_write_x.core.monitoring import WorkflowMonitor
-from src.ai_write_x.utils.content_parser import ContentParser
-from src.ai_write_x.utils import utils
+from ai_write_x.core.agent_factory import AgentFactory
+from ai_write_x.core.monitoring import WorkflowMonitor
+from ai_write_x.utils.content_parser import ContentParser
+from ai_write_x.utils import utils
 
 
 class ContentGenerationEngine(BaseWorkflowFramework):
@@ -55,8 +55,11 @@ class ContentGenerationEngine(BaseWorkflowFramework):
 
         try:
             self.validate_config()
+            # 分段计时：setup
+            self.monitor.start_timer("setup")
             self.agents = self.setup_agents()
             self.tasks = self.setup_tasks()
+            self.monitor.stop_timer("setup", self.config.name)
 
             # 根据工作流类型选择执行策略
             process_map = {
@@ -75,10 +78,16 @@ class ContentGenerationEngine(BaseWorkflowFramework):
                 verbose=True,
             )
 
+            # 分段计时：kickoff
+            self.monitor.start_timer("kickoff")
             result = crew.kickoff(inputs=input_data)
+            self.monitor.stop_timer("kickoff", self.config.name)
             result = utils.remove_code_blocks(str(result))
             if input_data.get("parse_result", True):
+                # 分段计时：parse
+                self.monitor.start_timer("parse")
                 parsed_result = self._parse_result(result, input_data)
+                self.monitor.stop_timer("parse", self.config.name)
                 if not parsed_result.title or parsed_result.title.lower() == "untitled":
                     parsed_result.title = input_data.get("title", None) or input_data.get(
                         "topic", "无标题"

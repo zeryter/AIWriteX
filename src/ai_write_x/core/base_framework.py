@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import threading
 from datetime import datetime
-from src.ai_write_x.core.tool_registry import GlobalToolRegistry
+from ai_write_x.core.tool_registry import GlobalToolRegistry
 
 
 class WorkflowType(Enum):

@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
-from src.ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils.path_manager import PathManager
+from ai_write_x.config.config import DEFAULT_TEMPLATE_CATEGORIES
 
 router = APIRouter(prefix="/api/templates", tags=["templates"])
 
@@ -121,8 +122,6 @@ async def delete_category(category_name: str, force: bool = False):
 async def get_default_template_categories():
     """获取系统默认模板分类"""
     try:
-        from src.ai_write_x.config.config import DEFAULT_TEMPLATE_CATEGORIES
-
         # 返回中文名称列表
         categories = list(DEFAULT_TEMPLATE_CATEGORIES.values())
 

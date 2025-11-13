@@ -6,7 +6,7 @@ import json
 import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from src.ai_write_x.utils import log
+from ai_write_x.utils import log
 from ..state import get_app_state
 
 

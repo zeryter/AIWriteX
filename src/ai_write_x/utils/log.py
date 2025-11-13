@@ -7,8 +7,8 @@ import multiprocessing
 import threading
 from datetime import datetime
 
-from src.ai_write_x.utils import comm
-from src.ai_write_x.utils import utils
+from ai_write_x.utils import comm
+from ai_write_x.utils import utils
 
 
 class FileLoggingHandler:

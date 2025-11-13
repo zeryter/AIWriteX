@@ -16,9 +16,9 @@ import subprocess
 import tempfile
 
 
-from src.ai_write_x.utils import utils
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils import utils
+from ai_write_x.config.config import Config
+from ai_write_x.utils.path_manager import PathManager
 
 
 __author__ = "iniwaper@gmail.com"

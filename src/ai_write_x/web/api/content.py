@@ -6,8 +6,8 @@ from typing import List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from src.ai_write_x.crew_main import ai_write_x_main
-from src.ai_write_x.utils import log
+from ai_write_x.crew_main import ai_write_x_main
+from ai_write_x.utils import log
 from ..state import get_app_state
 
 router = APIRouter(prefix="/api/content", tags=["content"])

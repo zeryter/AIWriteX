@@ -96,7 +96,7 @@ def run():
 def run_old():
     """启动GUI应用程序"""
     try:
-        import src.ai_write_x.gui.MainGUI as MainGUI
+        import ai_write_x.gui.MainGUI as MainGUI
 
         MainGUI.gui_start()
     except Exception as fallback_error:

@@ -14,9 +14,9 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 import uvicorn
 
-from src.ai_write_x.utils.path_manager import PathManager
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.utils import log
+from ai_write_x.utils.path_manager import PathManager
+from ai_write_x.config.config import Config
+from ai_write_x.utils import log
 
 # 导入状态管理
 from .state import app_state

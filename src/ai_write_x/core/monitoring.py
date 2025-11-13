@@ -3,6 +3,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import threading
+import time
 
 
 @dataclass
@@ -32,6 +33,7 @@ class WorkflowMonitor:
         self.metrics: Dict[str, WorkflowMetrics] = {}
         self.logs: List[ExecutionLog] = []
         self.max_logs = 1000  # 最大日志条数
+        self._timers: Dict[str, float] = {}
 
     @classmethod
     def get_instance(cls):
@@ -95,6 +97,20 @@ class WorkflowMonitor:
                 error_message=error_message,
             )
             self.logs.append(log_entry)
+            # 限制日志数量
+            if len(self.logs) > self.max_logs:
+                self.logs = self.logs[-self.max_logs :]
+
+    # 轻量分段计时器
+    def start_timer(self, name: str):
+        self._timers[name] = time.time()
+
+    def stop_timer(self, name: str, workflow_name: str, success: bool = True):
+        start = self._timers.pop(name, None)
+        if start is None:
+            return
+        duration = time.time() - start
+        self.track_execution(f"{workflow_name}:{name}", duration, success)
 
     def get_metrics(self, workflow_name: str | None = None) -> Dict[str, Any]:
         """获取指标数据"""

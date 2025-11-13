@@ -1,9 +1,9 @@
-from src.ai_write_x.core.tool_registry import GlobalToolRegistry
-from src.ai_write_x.tools.custom_tool import AIForgeSearchTool
-from src.ai_write_x.tools.custom_tool import ReadTemplateTool
-from src.ai_write_x.core.unified_workflow import UnifiedContentWorkflow
+from ai_write_x.core.tool_registry import GlobalToolRegistry
+from ai_write_x.tools.custom_tool import AIForgeSearchTool
+from ai_write_x.tools.custom_tool import ReadTemplateTool
+from ai_write_x.core.unified_workflow import UnifiedContentWorkflow
 
-from src.ai_write_x.adapters.platform_adapters import (
+from ai_write_x.adapters.platform_adapters import (
     WeChatAdapter,
     XiaohongshuAdapter,
     DouyinAdapter,
@@ -12,7 +12,7 @@ from src.ai_write_x.adapters.platform_adapters import (
     BaijiahaoAdapter,
     DoubanAdapter,
 )
-from src.ai_write_x.adapters.platform_adapters import PlatformType
+from ai_write_x.adapters.platform_adapters import PlatformType
 
 
 def initialize_global_tools():

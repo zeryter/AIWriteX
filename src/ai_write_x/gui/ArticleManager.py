@@ -12,12 +12,13 @@ import PySimpleGUI as sg
 import subprocess
 import json
 import sys
+import re
 
-from src.ai_write_x.utils import utils
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.tools.wx_publisher import pub2wx
-from src.ai_write_x.gui import ImageConfig
-from src.ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils import utils
+from ai_write_x.config.config import Config
+from ai_write_x.tools.wx_publisher import pub2wx
+from ai_write_x.gui import ImageConfig
+from ai_write_x.utils.path_manager import PathManager
 
 
 __author__ = "iniwaper@gmail.com"
@@ -99,7 +100,15 @@ class ArticleManager:
             articles = []
             for path in article_files:
                 basename = os.path.basename(path)
-                title = os.path.splitext(basename)[0].replace("_", "|")
+                name_no_ext = os.path.splitext(basename)[0]
+                display = name_no_ext
+                if "__" in display:
+                    display = display.split("__")[0]
+                else:
+                    m = re.search(r"-(\d{3})$", display)
+                    if m:
+                        display = re.sub(r"-(\d{3})$", "", display)
+                title = display.replace("_", "|")
                 ext = os.path.splitext(basename)[1].lower()
 
                 # 根据文件扩展名确定格式显示

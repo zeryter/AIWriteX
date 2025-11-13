@@ -4,9 +4,11 @@ import yaml
 import threading
 import tomlkit
 
-from src.ai_write_x.utils import log
-from src.ai_write_x.utils import utils
-from src.ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils import log
+from ai_write_x.utils import utils
+from ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils.security_manager import SecureKeyManager
+from ai_write_x.security.input_validator import InputValidator
 
 # 默认分类配置
 DEFAULT_TEMPLATE_CATEGORIES = {
@@ -55,6 +57,7 @@ class Config:
         self.config_path = self.__get_config_path()
         self.config_aiforge_path = self.__get_config_path("aiforge.toml")
         self.config_dimensional_path = self.__get_config_path("dimensional_creative_config.yaml")
+        self.security_manager = SecureKeyManager()
 
         # 加载维度化创意配置
         self.dimensional_creative_options = {}
@@ -181,6 +184,9 @@ class Config:
             "auto_publish": False,
             "article_format": "html",
             "format_publish": True,
+            "save_strategy": "timestamp",
+            "filename_datetime_format": "%Y%m%d-%H%M%S",
+            "filename_separator": "__",
             # 维度化创意配置
             "dimensional_creative": {
                 "enabled": True,
@@ -1467,9 +1473,28 @@ class Config:
         with self._lock:
             if not self.config:
                 raise ValueError("配置未加载")
-            api_key = self.config["api"][self.config["api"]["api_type"]]["api_key"]
-            key_index = self.config["api"][self.config["api"]["api_type"]]["key_index"]
-            return api_key[key_index]
+            api_type = self.config["api"]["api_type"]
+            api_config = self.config["api"][api_type]
+            api_key = api_config["api_key"]
+            key_index = api_config["key_index"]
+            
+            # 优先从环境变量获取，其次从配置文件获取
+            env_key_name = api_config.get("key", "")
+            if env_key_name:
+                env_value = self.security_manager.get_api_key(env_key_name)
+                if env_value:
+                    return env_value
+            # 配置文件回退时做安全防护
+            try:
+                if isinstance(api_key, list):
+                    if 0 <= key_index < len(api_key):
+                        return api_key[key_index] or ""
+                    return ""
+                if isinstance(api_key, str):
+                    return api_key
+            except Exception:
+                return ""
+            return ""
 
     @property
     def api_model(self):
@@ -1499,7 +1524,16 @@ class Config:
         with self._lock:
             if not self.config:
                 raise ValueError("配置未加载")
-            return self.config["img_api"][self.config["img_api"]["api_type"]]["api_key"]
+            img_api_type = self.config["img_api"]["api_type"]
+            img_api_config = self.config["img_api"][img_api_type]
+            
+            # 优先从环境变量获取图片API密钥
+            if img_api_type == "ali":
+                env_value = self.security_manager.get_api_key("ALI_IMAGE_API_KEY")
+                if env_value:
+                    return env_value
+            
+            return img_api_config["api_key"]
 
     @property
     def img_api_model(self):
@@ -1658,9 +1692,27 @@ class Config:
         with self._lock:
             if not self.aiforge_config:
                 raise ValueError("配置未加载")
-            return self.aiforge_config["llm"][self.aiforge_config["default_llm_provider"]][
-                "api_key"
-            ]
+            
+            provider = self.aiforge_config["default_llm_provider"]
+            provider_config = self.aiforge_config["llm"][provider]
+            
+            # 优先从环境变量获取AIForge API密钥
+            env_key_map = {
+                "openrouter": "OPENROUTER_API_KEY",
+                "deepseek": "DEEPSEEK_API_KEY",
+                "grok": "XAI_API_KEY",
+                "gemini": "GEMINI_API_KEY",
+                "ollama": "OLLAMA_API_KEY",
+                "siliconflow": "SILICONFLOW_API_KEY"
+            }
+            
+            env_key_name = env_key_map.get(provider.lower())
+            if env_key_name:
+                env_value = self.security_manager.get_api_key(env_key_name)
+                if env_value:
+                    return env_value
+            
+            return provider_config["api_key"]
 
     def __get_config_path(self, file_name="config.yaml"):
         """获取配置文件路径并确保文件存在"""
@@ -1802,22 +1854,62 @@ class Config:
             api_type = self.api_type
             api_config = self.config["api"][api_type]
 
-            # 检查 api_key 列表
-            api_keys = api_config.get("api_key", [])
-            if not api_keys or not any(api_keys):
-                self.error_message = f"未配置API KEY，请打开配置填写{api_type}的api_key"
-                return False
+            # 优先从环境变量获取API密钥，其次回退到配置文件
+            env_key_name = api_config.get("key", "")
+            env_api_key = None
+            if env_key_name:
+                try:
+                    env_api_key = self.security_manager.get_api_key(env_key_name)
+                except Exception:
+                    env_api_key = None
 
-            # 检查 key_index 是否有效
-            key_index = api_config.get("key_index", 0)
-            if key_index >= len(api_keys):
-                self.error_message = f"{api_type}的key_index({key_index})超出范围，api_key列表只有{len(api_keys)}个元素"  # noqa 501
-                return False
+            # 使用提供商名称进行密钥格式校验
+            def _provider_for_api_type(name: str) -> str:
+                m = name.lower()
+                if m == "openrouter":
+                    return "openrouter"
+                if m == "deepseek":
+                    return "deepseek"
+                if m == "grok":
+                    return "xai"
+                if m == "gemini":
+                    return "gemini"
+                if m == "qwen":
+                    return "openai"
+                if m == "ollama":
+                    return "ollama"
+                if m == "siliconflow":
+                    return "siliconflow"
+                return "generic"
 
-            # 检查选中的 api_key 是否为空
-            if not api_keys[key_index]:
-                self.error_message = f"未配置API KEY，请打开配置填写{api_type}的api_key"
-                return False
+            provider_name = _provider_for_api_type(api_type)
+
+            # 校验环境变量中的密钥格式（如有）
+            validator = InputValidator()
+
+            env_valid = bool(env_api_key) and validator.validate_api_key(env_api_key, provider_name)
+
+            # 如果环境变量不可用或格式不合法，则检查配置文件中的密钥数组
+            if not env_valid:
+                api_keys = api_config.get("api_key", [])
+                key_index = api_config.get("key_index", 0)
+
+                if not api_keys or not any(api_keys):
+                    self.error_message = f"未配置API KEY，请打开配置填写{api_type}的api_key"
+                    return False
+
+                if key_index >= len(api_keys):
+                    self.error_message = f"{api_type}的key_index({key_index})超出范围，api_key列表只有{len(api_keys)}个元素"  # noqa 501
+                    return False
+
+                selected_key = api_keys[key_index]
+                if not selected_key:
+                    self.error_message = f"未配置API KEY，请打开配置填写{api_type}的api_key"
+                    return False
+
+                if not validator.validate_api_key(selected_key, provider_name):
+                    self.error_message = f"{api_type}的API KEY格式不正确，请检查后重试"
+                    return False
 
             # 检查 model 列表
             models = api_config.get("model", [])
@@ -1836,43 +1928,70 @@ class Config:
                 self.error_message = f"未配置Model，请打开配置填写{api_type}的model"
                 return False
 
-            # 检查图片生成配置
+            # 检查图片生成配置（支持环境变量回退，兼容字符串/列表）
             if self.img_api_type != "picsum":
                 img_api_config = self.config["img_api"][self.img_api_type]
-                img_api_keys = img_api_config.get("api_key", [])
-                img_key_index = img_api_config.get("key_index", 0)
+                validator = InputValidator()
 
-                if (
-                    not img_api_keys
-                    or img_key_index >= len(img_api_keys)
-                    or not img_api_keys[img_key_index]
-                ):
-                    self.error_message = (
-                        f"未配置图片生成模型的API KEY，请打开配置填写{self.img_api_type}的api_key"
-                    )
-                    return False
+                env_img_key = None
+                if self.img_api_type == "ali":
+                    try:
+                        env_img_key = self.security_manager.get_api_key("ALI_IMAGE_API_KEY")
+                    except Exception:
+                        env_img_key = None
 
-                img_models = img_api_config.get("model", [])
-                img_model_index = img_api_config.get("model_index", 0)
+                env_img_valid = bool(env_img_key) and validator.validate_api_key(env_img_key, "ali_image")
 
-                if (
-                    not img_models
-                    or img_model_index >= len(img_models)
-                    or not img_models[img_model_index]
-                ):
+                if not env_img_valid:
+                    img_api_keys = img_api_config.get("api_key", "")
+                    selected_img_key = None
+                    if isinstance(img_api_keys, list):
+                        img_key_index = img_api_config.get("key_index", 0)
+                        if 0 <= img_key_index < len(img_api_keys):
+                            selected_img_key = img_api_keys[img_key_index]
+                    elif isinstance(img_api_keys, str):
+                        selected_img_key = img_api_keys
+
+                    if not selected_img_key:
+                        self.error_message = (
+                            f"未配置图片生成模型的API KEY，请打开配置填写{self.img_api_type}的api_key"
+                        )
+                        return False
+
+                img_models = img_api_config.get("model", "")
+                valid_img_model = False
+                if isinstance(img_models, list):
+                    img_model_index = img_api_config.get("model_index", 0)
+                    if 0 <= img_model_index < len(img_models) and img_models[img_model_index]:
+                        valid_img_model = True
+                elif isinstance(img_models, str):
+                    valid_img_model = bool(img_models)
+
+                if not valid_img_model:
                     self.error_message = (
                         f"未配置图片生成的模型，请打开配置填写{self.img_api_type}的model"
                     )
                     return False
 
-            # 检查自动发布配置
+            # 检查自动发布配置（支持环境变量 WECHAT_APPID / WECHAT_APPSECRET）
             if self.auto_publish:
                 valid_cred = any(
-                    cred["appid"] and cred["appsecret"] for cred in self.wechat_credentials
+                    cred.get("appid") and cred.get("appsecret") for cred in self.wechat_credentials
                 )
+
                 if not valid_cred:
-                    self.error_message = "【自动发布】时，需配置微信公众号appid和appsecret"
-                    return False
+                    # 尝试从环境变量读取
+                    env_appid = os.getenv("WECHAT_APPID", "").strip()
+                    env_appsecret = os.getenv("WECHAT_APPSECRET", "").strip()
+                    validator = InputValidator()
+
+                    def _valid_wechat(s: str) -> bool:
+                        # 微信AppID/AppSecret通常为字母数字
+                        return validator.validate_string(s, min_length=6, max_length=64)
+
+                    if not (env_appid and env_appsecret and _valid_wechat(env_appid) and _valid_wechat(env_appsecret)):
+                        self.error_message = "【自动发布】时，需配置微信公众号appid和appsecret"
+                        return False
 
             # 检查 AIForge 配置
             if not self.aiforge_api_key:

@@ -1,8 +1,9 @@
 import os
 import time
+import asyncio
 from typing import Dict, Any
 
-from src.ai_write_x.core.base_framework import (
+from ai_write_x.core.base_framework import (
     WorkflowConfig,
     AgentConfig,
     TaskConfig,
@@ -10,7 +11,7 @@ from src.ai_write_x.core.base_framework import (
     ContentType,
     ContentResult,
 )
-from src.ai_write_x.adapters.platform_adapters import (
+from ai_write_x.adapters.platform_adapters import (
     WeChatAdapter,
     XiaohongshuAdapter,
     DouyinAdapter,
@@ -19,16 +20,17 @@ from src.ai_write_x.adapters.platform_adapters import (
     ZhihuAdapter,
     DoubanAdapter,
 )
-from src.ai_write_x.core.monitoring import WorkflowMonitor
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.core.content_generation import ContentGenerationEngine
-from src.ai_write_x.utils.path_manager import PathManager
-from src.ai_write_x.utils import utils
-from src.ai_write_x.adapters.platform_adapters import PlatformType
-from src.ai_write_x.utils import log
+from ai_write_x.core.monitoring import WorkflowMonitor
+from ai_write_x.config.config import Config
+from ai_write_x.core.content_generation import ContentGenerationEngine
+from ai_write_x.core.async_processor import AsyncContentProcessor
+from ai_write_x.utils.path_manager import PathManager
+from ai_write_x.utils import utils
+from ai_write_x.adapters.platform_adapters import PlatformType
+from ai_write_x.utils import log
 
 # 导入维度化创意引擎
-from src.ai_write_x.creative.dimensional_engine import DimensionalCreativeEngine
+from ai_write_x.creative.dimensional_engine import DimensionalCreativeEngine
 
 
 class UnifiedContentWorkflow:
@@ -36,6 +38,7 @@ class UnifiedContentWorkflow:
 
     def __init__(self):
         self.content_engine = None
+        self.async_processor = AsyncContentProcessor(max_concurrency=2)
         # 移除所有旧创意模块，只保留维度化创意引擎
         self.platform_adapters = {
             PlatformType.WECHAT.value: WeChatAdapter(),
@@ -116,8 +119,6 @@ class UnifiedContentWorkflow:
         """生成基础内容"""
         # 动态获取配置
         base_config = self.get_base_content_config(**kwargs)
-
-        # 创建内容生成引擎
         self.content_engine = ContentGenerationEngine(base_config)
 
         # 准备输入数据
@@ -128,6 +129,16 @@ class UnifiedContentWorkflow:
             "reference_ratio": kwargs.get("reference_ratio", 0.0),
         }
 
+        # 支持异步执行：当显式传入 use_async=True 时使用异步处理器
+        if kwargs.get("use_async", False):
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(
+                    self.async_processor.run_workflow(base_config, input_data)
+                )
+            finally:
+                loop.close()
+        # 否则走同步执行路径
         return self.content_engine.execute_workflow(input_data)
 
     def execute(self, topic: str, **kwargs) -> Dict[str, Any]:
@@ -146,23 +157,31 @@ class UnifiedContentWorkflow:
 
         try:
             # 1. 生成基础内容（统一Markdown格式）
+            self.monitor.start_timer("writing")
             base_content = self._generate_base_content(
                 topic, publish_platform=publish_platform, **kwargs
             )
+            self.monitor.stop_timer("writing", "unified_workflow")
             log.print_log("[PROGRESS:WRITING:END]", "internal")
 
             # 2. 维度化创意变换
             log.print_log("[PROGRESS:CREATIVE:START]", "internal")
+            self.monitor.start_timer("creative")
             final_content = self._apply_dimensional_creative_transformation(base_content, **kwargs)
+            self.monitor.stop_timer("creative", "unified_workflow")
             log.print_log("[PROGRESS:CREATIVE:END]", "internal")
 
             # 3. 转换处理（template或design）
 
+            self.monitor.start_timer("transform")
             transform_content = self._transform_content(final_content, publish_platform, **kwargs)
+            self.monitor.stop_timer("transform", "unified_workflow")
 
             # 4. 保存（非AI参与）
             log.print_log("[PROGRESS:SAVE:START]", "internal")
+            self.monitor.start_timer("save")
             save_result = self._save_content(transform_content, title)
+            self.monitor.stop_timer("save", "unified_workflow")
             if save_result.get("success", False):
                 article_path = save_result.get("path")
                 kwargs["article_path"] = article_path
@@ -173,9 +192,11 @@ class UnifiedContentWorkflow:
             log.print_log("[PROGRESS:PUBLISH:START]", "internal")
             publish_result = None
             if self._should_publish():
+                self.monitor.start_timer("publish")
                 publish_result = self._publish_content(
                     transform_content, publish_platform, **kwargs
                 )
+                self.monitor.stop_timer("publish", "unified_workflow")
                 log.print_log(f"发布完成，总结：{publish_result.get('message')}")
 
             log.print_log("[PROGRESS:PUBLISH:END]", "internal")
@@ -487,17 +508,29 @@ class UnifiedContentWorkflow:
 
     def _get_save_path(self, title: str, file_extension: str) -> str:
         """获取保存路径"""
-
-        # 获取文章保存目录
         dir_path = PathManager.get_article_dir()
-
-        # 清理文件名，确保安全
-        safe_filename = utils.sanitize_filename(title)
-
-        # 构建完整路径
-        save_path = os.path.join(dir_path, f"{safe_filename}.{file_extension}")
-
-        return save_path
+        config = Config.get_instance()
+        base = utils.sanitize_filename(title)
+        strategy = config.default_config.get("save_strategy", "timestamp")
+        sep = config.default_config.get("filename_separator", "__")
+        if strategy == "timestamp":
+            from datetime import datetime
+            fmt = config.default_config.get("filename_datetime_format", "%Y%m%d-%H%M%S")
+            stamp = datetime.now().strftime(fmt)
+            filename = f"{base}{sep}{stamp}.{file_extension}"
+            return os.path.join(dir_path, filename)
+        if strategy == "increment":
+            path = os.path.join(dir_path, f"{base}.{file_extension}")
+            if not os.path.exists(path):
+                return path
+            i = 1
+            while True:
+                filename = f"{base}-{i:03d}.{file_extension}"
+                candidate = os.path.join(dir_path, filename)
+                if not os.path.exists(candidate):
+                    return candidate
+                i += 1
+        return os.path.join(dir_path, f"{base}.{file_extension}")
 
     def _publish_content(
         self, content: ContentResult, publish_platform: str, **kwargs

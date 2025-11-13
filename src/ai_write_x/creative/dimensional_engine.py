@@ -6,8 +6,8 @@
 
 import random
 from typing import Dict, List, Any, Tuple
-from src.ai_write_x.core.content_generation import ContentGenerationEngine
-from src.ai_write_x.core.base_framework import (
+from ai_write_x.core.content_generation import ContentGenerationEngine
+from ai_write_x.core.base_framework import (
     WorkflowConfig,
     AgentConfig,
     TaskConfig,

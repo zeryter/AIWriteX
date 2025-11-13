@@ -3,9 +3,9 @@ import re
 import copy
 import sys
 
-from src.ai_write_x.config.config import Config, DEFAULT_TEMPLATE_CATEGORIES
-from src.ai_write_x.utils import utils
-from src.ai_write_x.utils.path_manager import PathManager
+from ai_write_x.config.config import Config, DEFAULT_TEMPLATE_CATEGORIES
+from ai_write_x.utils import utils
+from ai_write_x.utils.path_manager import PathManager
 
 
 class ConfigEditor:

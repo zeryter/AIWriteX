@@ -12,11 +12,11 @@ import signal
 import sys
 import os
 
-from src.ai_write_x.web.app import app
-from src.ai_write_x.utils import log
-from src.ai_write_x.config.config import Config
-from src.ai_write_x.utils.tray_manager import TrayManager
-from src.ai_write_x.utils.icon_manager import WindowIconManager
+from ai_write_x.web.app import app
+from ai_write_x.utils import log
+from ai_write_x.config.config import Config
+from ai_write_x.utils.tray_manager import TrayManager
+from ai_write_x.utils.icon_manager import WindowIconManager
 
 
 class WebViewGUI:
@@ -342,8 +342,7 @@ def gui_start():
         # 如果WebView启动失败，可以回退到原有GUI
         try:
             log.print_log("尝试启动传统GUI界面...", "warning")
-            import src.ai_write_x.gui.MainGUI as MainGUI
-
+            import ai_write_x.gui.MainGUI as MainGUI
             MainGUI.gui_start()
         except Exception:
             log.print_log("传统GUI启动也失败", "error")
